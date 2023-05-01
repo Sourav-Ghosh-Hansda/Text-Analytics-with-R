@@ -1,0 +1,159 @@
+---
+title: "MA331-Report: 2211606"
+author: "Ghosh Hansda, Sourav"
+subtitle: TED Talks by Speaker Alan Eustace and Speaker Tshering Tobgay
+output: 
+html_document : default  
+---
+```{r setup, include=FALSE}
+### Don't delete this setup code chunk from your file
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, comment = NULL)
+## DON'T ALTER THIS: this is to prevent printing the code or any unnecessary addition in your final "html" report file.
+# You can extend this list below to load all the packages required for your analyses:
+#====================================================================================
+library(dsEssex)
+library(tidyverse)
+library(tidytext)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+# load the 'ted_talks' data
+#=========================
+data(ted_talks)
+# Filter   talk data for your analyses 
+My_data <- ted_talks %>%
+  filter(speaker %in% c("Alan Eustace", "Tshering Tobgay"))
+```
+## Introduction
+This report is an exploratory analysis of two TED talks, one each by Alan Eustace and Tshering Tobgay. Alan Eustace’s speech took place on October 21, 2014. He is a former Google executive. Tshering Tobgay delivered the speech on April 1, 2016. He is a Bhutanese politician who served as the Prime Minister of Bhutan from 2013 to 2018. The objective of this report is to identify common themes in their speeches and conduct a sentiment analysis of the words uttered.
+
+## Methods
+<p style="text-align: justify;">The data used in this analysis is from the ted_talks dataset available in the dsEssex package in R. The dataset contains information about various TED Talks, including the speaker, the title of the talk, and the transcript of the speech.The data preparation process involves loading the required packages, dsEssex, tidyverse, tidytext, ggplot2, and ggrepel. So the dataset is filtered to include speeches by the two speakers and then tokenize the text using the “unnest_tokens()” function from the “tidytext” package. The analysis removes stop words, as well as some words like “laughter” and “applause,” to create a word count table for each speaker. Visualizing the top 25 words used by each speaker is done by using the “slice_max()”, “mutate()”, and “geom_col()” functions from the “ggplot2” package. To compare the top words used by both speakers, the report uses “bind_rows()”, “group_by()”, “filter()”, “pivot_wider()”, and “geom_abline()” functions from “ggplot2” and labels the words using “geom_text_repel()” function from “ggrepel”. Performing sentiment analysis uses the NRC lexicon. It uses the “get_sentiments(”nrc”)” function to obtain the NRC lexicon and joins the lexicon with the tokenized text using “inner_join()”. The analysis counts the number of words associated with each sentiment for each speaker using “count()”, and pivots the data using “pivot_wider()” to create a table with columns for each speaker and rows for each sentiment. It calculates the odds ratio and log odds ratio of each sentiment for each speaker using “mutate()”. The odds ratio is calculated as the ratio of the number of words associated with a sentiment to the number of words not associated with the sentiment. The log odds ratio is calculated as the natural logarithm of the odds ratio.The most common positive and negative sentiment lexicons are extracted from a dataset of talks. First, the unnest_tokens() function is used to separate the text into individual words. The anti_join() function is then used to remove stop words, followed by the inner_join() function to match the remaining words with the National Research Council (NRC) sentiment lexicon, which classifies words as positive, negative, or neutral. The resulting words are then filtered to select only those with positive or negative sentiment, and their frequency is counted using count(). Two plots are created to show the most common positive and negative words. The slice_max() function is used to select the top 10 words, and the fct_reorder() function is used to order the words by frequency. The plots are created using ggplot(), with geom_col() to create a bar plot, and coord_flip() to flip the axes. The x- and y-labels are set using xlab() and ylab(), and the plot titles are set using ggtitle(). Finally, the plots are displayed side by side using grid.arrange().</p>
+## Results
+<p style="text-align: justify;">The tables of Alan Eustace and Tshering Tobgay show the words they used most frequently in their respective talks.Here Alan has used maximum the word 'parachute' 15 times whereas Tshering has used 'carbon' 23 times.</p>
+```{r, echo=FALSE}
+# Tokenize the text
+tidy_talks <- My_data %>%
+  unnest_tokens(word, text)
+# Removal of stop words
+ted_talks_nonstop <- tidy_talks %>%
+  anti_join(get_stopwords()) %>%
+  filter(!word %in% c("laughter","applause"))
+# Creating a word count table for each speaker
+Alan_Eustace <- ted_talks_nonstop %>%
+  filter(speaker == "Alan Eustace") %>% 
+  count(speaker, word, sort = TRUE)
+Alan_Eustace
+Tshering_Tobgay <- ted_talks_nonstop %>%
+  filter(speaker == "Tshering Tobgay") %>% 
+  count(speaker, word, sort = TRUE)
+Tshering_Tobgay
+```
+<p style="text-align: justify;">The first two bar graphs depict the top 25 words used by both the speakers.Alan has mostly been using words like 'parachute','can' & 'right' whereas Tshering has mostly been using words like 'carbon','country' & 'bhutan'.The third figure shows a scatter plot where each pair of words is represented by a point on the plot, with the x-axis representing the frequency of the word in Alan Eustace’s speech, and the y-axis representing the frequency of the word in Tshering Tobgay’s speech. The line of best fit shows the trend in the data.</p>
+```{r, echo=FALSE}
+# Visualizing top words for Alan Eustace & Tshering Tobgay
+p1 <- Alan_Eustace %>%
+  slice_max(n, n = 25) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) + ggplot2::geom_col()
+p2 <- Tshering_Tobgay %>%
+   slice_max(n, n = 25) %>%
+   mutate(word = reorder(word, n)) %>%
+   ggplot(aes(n, word)) +  geom_col()
+grid.arrange(p1, p2, ncol=2)
+# combining the two data frames and plotting them together
+  bind_rows(Alan_Eustace, Tshering_Tobgay) %>%
+  group_by(word) %>%
+  filter(sum(n) > 10) %>%
+  ungroup() %>%
+  pivot_wider(names_from = "speaker", values_from = "n", values_fill = 0) %>%
+  ggplot(aes(`Alan Eustace`, `Tshering Tobgay`)) +
+  geom_abline(color = "black", size = 1.2, alpha = 0.75, lty = 3) +
+  geom_text_repel(aes(label = word), max.overlaps = 25) +
+  coord_fixed()
+```
+<p style="text-align: justify;">The table below shows which emotions were expressed more frequently by each speaker during the talks.The values in the table show the number of words associated with each emotional tone for each speaker.Here Tshering is showing more trust than Alan & having a more positive & joyous tone.</p>
+```{r,echo=FALSE}
+# Filtering the talks data for our analyses
+  talks <- ted_talks %>%
+  filter(speaker %in% c("Alan Eustace", "Tshering Tobgay"))
+# performing sentiment analysis using the NRC lexicon
+  ted_sentiments <- talks %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)%>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  count(speaker, sentiment) %>%
+  pivot_wider(names_from = speaker, values_from = n, values_fill = 0)
+  ted_sentiments
+```
+<p style="text-align: justify;">The bar chart below displays the log odds ratio for each sentiment, with sentiments ordered based on their association with the speakers. Sentiments that are more strongly associated with Alan Eustace appear on the left side of the chart, while those more strongly associated with Tshering Tobgay appear on the right side. The color of the bars indicates whether the log odds ratio is positive (dark green) or negative (red). The x-axis shows the log odds ratio, which is a statistical measure that reflects the strength and direction of the association between the sentiment and the speakers. A lower log odds ratio indicates a stronger association with Alan Eustace, while a higher log odds ratio indicates a stronger association with Tshering Tobgay. Overall, the visualization helps to identify which sentiments are more strongly associated with each speaker and to compare the differences in sentiment expression between them.</p>
+```{r,echo=FALSE}
+# calculating odds ratio and log odds ratio
+  ted_sentiments <- talks %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)%>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  count(speaker, sentiment) %>%
+  pivot_wider(names_from = speaker, values_from = n, values_fill = 0)%>%
+  mutate(OR = compute_OR(ted_sentiments$`Alan Eustace`, ted_sentiments$`Tshering Tobgay`,    correction = FALSE),log_OR = log(OR), sentiment = reorder(sentiment,log_OR))
+# Plot the log odds ratio for each sentiment
+ted_sentiments <- talks %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)%>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  count(speaker, sentiment) %>%
+  pivot_wider(names_from = speaker, values_from = n, values_fill = 0)%>%
+mutate(OR =  compute_OR(ted_sentiments$`Alan Eustace`, ted_sentiments$`Tshering Tobgay`, correction = FALSE),log_OR = log(OR), sentiment = reorder(sentiment, log_OR))%>%
+  ggplot(aes(sentiment, log_OR, fill = log_OR < 0)) +
+  geom_col(show.legend = FALSE) +
+  ylab("Log odds ratio") + ggtitle("The association between sentiments") +
+  coord_flip() + 
+  scale_fill_manual(name = "", values = c("darkgreen", "red"))
+ted_sentiments
+```
+<p style="text-align: justify;">In the following chart, we have displayed the most common positive words and most common negative words used in both the talks.The words like 'laughter' & 'applause' have more postive impact & on the other hand words like 'government', 'impossible' & 'fight' are having a more negative impact.</p>
+```{r, echo=FALSE}
+# Get the most common positive sentiment lexicons
+positive_words <- talks %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)%>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  filter(sentiment == "positive") %>%
+  count(word, sort = TRUE)
+# Get the most common negative sentiment lexicons
+negative_words <- talks %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)%>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  filter(sentiment == "negative") %>%
+  count(word, sort = TRUE)
+# Plot the most common positive words
+plot_positive <- positive_words %>%
+  slice_max(n, n = 10) %>%
+  mutate(word = fct_reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col(fill = "darkgreen") +
+  coord_flip() +
+  xlab(NULL) +
+  ylab("Frequency") +
+  ggtitle("Most Common Positive Words")
+# Plot the most common negative words
+plot_negative <- negative_words %>%
+  slice_max(n, n = 10) %>%
+  mutate(word = fct_reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col(fill = "red") +
+  coord_flip() +
+  xlab(NULL) +
+  ylab("Frequency") +
+  ggtitle("Most Common Negative Words")
+# Display the plots side by side
+grid.arrange(plot_positive, plot_negative, ncol = 2)
+```
+
+ 
+ 
+ 
+
+
+ 
